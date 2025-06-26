@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المساعد العلاجي الصوتي (متصل بـ OpenAI)</title>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+         :root {
+            --primary-color: #003366;
+            --secondary-color: #d6a25b;
+            --accent-color: #28a745;
+            --danger-color: #dc3545;
+            --light-bg: #f0f4f8;
+            --text-color: #333;
+        }
+        
+        body {
+            font-family: 'Tajawal', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: var(--light-bg);
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 600px;
+            width: 100%;
+            padding: 30px;
+            background-color: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        h1 {
+            color: var(--primary-color);
+            margin-bottom: 10px;
+        }
+        
+        p {
+            color: var(--text-color);
+            line-height: 1.6;
+        }
+        
+        #status {
+            margin: 25px 0;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: var(--primary-color);
+            min-height: 30px;
+            white-space: pre-wrap;
+        }
+        
+        #recordButton {
+            padding: 15px 30px;
+            font-size: 20px;
+            font-family: 'Tajawal', sans-serif;
+            cursor: pointer;
+            border: none;
+            border-radius: 50px;
+            background-color: var(--accent-color);
+            color: white;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4);
+        }
+        
+        #recordButton.recording {
+            background-color: var(--danger-color);
+            box-shadow: 0 4px 15px rgba(220, 53, 69, 0.5);
+            animation: pulse 1.5s infinite;
+        }
+        
+        #recordButton:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+            }
+            50% {
+                transform: scale(1.05);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+        
+        .loader {
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid var(--secondary-color);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 20px auto;
+            display: none;
+            /* Hidden by default */
+        }
+        
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+        
+        footer {
+            margin-top: 30px;
+            font-size: 0.9em;
+            color: #777;
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <h1>المساعد العلاجي الصوتي</h1>
+        <p>أنا هنا للاستماع وتقديم الدعم في بيئة آمنة. انقر على الزر أدناه لبدء المحادثة.</p>
+
+        <div id="status">الحالة: جاهز للبدء.</div>
+        <div class="loader" id="loader"></div>
+
+        <button id="recordButton">اضغط وتحدث</button>
+    </div>
+
+    <footer>
+        <p><strong>تنبيه:</strong> هذا النظام هو نموذج تجريبي متصل بالذكاء الاصطناعي مباشرة من المتصفح.</p>
+    </footer>
+
+    <script>
+        const recordButton = document.getElementById('recordButton');
+        const statusDiv = document.getElementById('status');
+        const loader = document.getElementById('loader');
+
+        // --- REAL AI AND SPEECH RECOGNITION LOGIC ---
+
+        // IMPORTANT: Your OpenAI API key.
+        // تحذير: لا تشارك هذا المفتاح مع أي شخص آخر
+        const OPENAI_API_KEY = "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";
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.continuous = false;
+            recognition.lang = 'ar-OM';
+            recognition.interimResults = false;
+        } else {
+            alert("عذراً، متصفحك لا يدعم خاصية التعرف على الكلام.");
+            recordButton.disabled = true;
+        }
+
+        const generate_therapeutic_response = async(prompt) => {
+            statusDiv.textContent = 'الحالة: الذكاء الاصطناعي يفكر في رد مناسب...';
+            loader.style.display = 'block';
+
+            const SYSTEM_PROMPT = `You are a compassionate, Omani-dialect voice-based mental health assistant. Your primary role is to provide a safe, supportive space for users to express their feelings and thoughts. You must communicate in a calm, empathetic tone using active listening techniques. Be highly sensitive to Islamic values, family dynamics, and social norms in Oman. Never provide direct advice or diagnosis. Instead, ask guiding questions to help the user explore their feelings and reach their own conclusions. Use simple, understandable Arabic mental health vocabulary. Example response: "أتفهم أن هذا الموقف يسبب لك الكثير من القلق. هل يمكنك أن تخبرني المزيد عن الأفكار التي تدور في ذهنك عندما تشعر بذلك؟"`;
+
+            let messages = [{
+                role: "system",
+                content: SYSTEM_PROMPT
+            }, {
+                role: "user",
+                content: prompt
+            }];
+
+            const payload = {
+                model: "gpt-4o", // Using the powerful GPT-4o model
+                messages: messages
+            };
+            const apiUrl = `https://api.openai.com/v1/chat/completions`;
+
+            try {
+                const response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${OPENAI_API_KEY}`
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                if (!response.ok) {
+                    const errorBody = await response.json();
+                    throw new Error(`API call failed with status: ${response.status}. Details: ${errorBody.error.message}`);
+                }
+
+                const result = await response.json();
+
+                if (result.choices && result.choices.length > 0) {
+                    const text = result.choices[0].message.content;
+                    return text;
+                } else {
+                    console.error("Unexpected API response structure:", result);
+                    return "عذراً، لم أتمكن من إيجاد رد مناسب. هل يمكننا المحاولة مرة أخرى؟";
+                }
+            } catch (error) {
+                console.error("Error calling OpenAI API:", error);
+                return `عفواً، حدث خطأ أثناء الاتصال بالذكاء الاصطناعي. التفاصيل: ${error.message}`;
+            }
+        };
+
+        const synthesize_speech = async(text) => {
+            statusDiv.textContent = 'الحالة: جاري تحويل الرد إلى صوت...';
+            if (!window.speechSynthesis) {
+                alert("عذراً، متصفحك لا يدعم تحويل النص إلى كلام.");
+                return;
+            }
+            return new Promise((resolve, reject) => {
+                const voices = window.speechSynthesis.getVoices();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.voice = voices.find(voice => voice.lang.startsWith('ar-')) || voices.find(voice => voice.default);
+                utterance.lang = utterance.voice ? utterance.voice.lang : 'ar-SA';
+                utterance.rate = 0.9;
+                utterance.pitch = 1.0;
+
+                utterance.onend = () => resolve();
+                utterance.onerror = (event) => reject(event.error);
+                window.speechSynthesis.speak(utterance);
+            });
+        };
+
+        // --- UI LOGIC ---
+
+        let isRecording = false;
+
+        const toggleRecording = () => {
+            if (isRecording) {
+                recognition.stop();
+            } else {
+                if (!recognition) {
+                    alert("خاصية التعرف على الكلام غير متاحة.");
+                    return;
+                }
+                try {
+                    recognition.start();
+                } catch (error) {
+                    console.error("Speech recognition could not start:", error);
+                    statusDiv.textContent = "الحالة: لم يتمكن التعرف على الكلام من البدء.";
+                }
+            }
+        };
+
+        if (recognition) {
+            recognition.onstart = () => {
+                isRecording = true;
+                recordButton.textContent = 'أوقف التسجيل';
+                recordButton.classList.add('recording');
+                statusDiv.textContent = 'الحالة: جاري الاستماع...';
+            };
+
+            recognition.onresult = async(event) => {
+                const transcript = event.results[0][0].transcript;
+                statusDiv.textContent = `سمعتك تقول: "${transcript}"`;
+                recordButton.disabled = true;
+                loader.style.display = 'block';
+
+                const responseText = await generate_therapeutic_response(transcript);
+
+                await synthesize_speech(responseText);
+
+                loader.style.display = 'none';
+                statusDiv.textContent = 'الحالة: جاهز للتحدث مرة أخرى.';
+                recordButton.disabled = false;
+            };
+
+            recognition.onerror = (event) => {
+                console.error("Speech recognition error:", event.error);
+                let errorMessage = "حدث خطأ أثناء التعرف على الكلام.";
+                if (event.error === 'no-speech') {
+                    errorMessage = "لم يتم سماع أي صوت. يرجى المحاولة مرة أخرى.";
+                } else if (event.error === 'not-allowed') {
+                    errorMessage = "تم رفض الوصول إلى الميكروفون.";
+                }
+                statusDiv.textContent = `الحالة: ${errorMessage}`;
+            };
+
+            recognition.onend = () => {
+                isRecording = false;
+                recordButton.textContent = 'اضغط وتحدث';
+                recordButton.classList.remove('recording');
+                if (!recordButton.disabled) {
+                    statusDiv.textContent = 'الحالة: جاهز للبدء.';
+                }
+            };
+        }
+
+        recordButton.addEventListener('click', toggleRecording);
+
+        window.addEventListener('load', () => {
+            if (window.speechSynthesis) {
+                const voices = window.speechSynthesis.getVoices();
+                if (voices.length === 0) {
+                    window.speechSynthesis.onvoiceschanged = () => {};
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
+<br>
