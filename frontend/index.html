@@ -145,10 +145,7 @@
         const statusDiv = document.getElementById('status');
         const loader = document.getElementById('loader');
 
-        // --- REAL AI AND SPEECH RECOGNITION LOGIC ---
 
-        // IMPORTANT: Your OpenAI API key.
-        // تحذير: لا تشارك هذا المفتاح مع أي شخص آخر
         const OPENAI_API_KEY = "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";
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -179,7 +176,7 @@
             }];
 
             const payload = {
-                model: "gpt-4o", // Using the powerful GPT-4o model
+                model: "gpt-4o",
                 messages: messages
             };
             const apiUrl = `https://api.openai.com/v1/chat/completions`;
@@ -234,7 +231,6 @@
             });
         };
 
-        // --- UI LOGIC ---
 
         let isRecording = false;
 
